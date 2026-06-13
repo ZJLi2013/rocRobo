@@ -1,7 +1,7 @@
 # rocRobo — 设计文档（活文档 / 单一真相来源）
 
 > rocRobo = 在 **AMD GPU（ROCm）** 上、不依赖 NV 生态、重做一个 cuRobo 等价的开源运动生成组件。
-> 背景与模块/开源调研见 [`readme.md`](readme.md)（cuRobo 拆解 + 开源替代 + ROCm 落地）。
+> 背景与模块/开源调研见 [`docs/curobo-study.md`](docs/curobo-study.md)（cuRobo 拆解 + 开源替代 + ROCm 落地）；模块定位/API/性能见 [`readme.md`](readme.md)。
 > 本文件是项目级活文档：架构 + backlog + 选型决策，随迭代持续更新。
 
 ## 1. 项目定位
@@ -21,7 +21,7 @@
 | ⑤ motion gen | 极简编排 ①→④ |
 | 底座 | **JAX-ROCm + PyRoki**（feature1 验证，GPU 全绿）|
 
-详见 [`readme.md` §1/§4](readme.md)。
+详见 [`docs/curobo-study.md` §1/§4](docs/curobo-study.md)。
 
 ## 3. Backlog（优先级 P0/P1/P2）
 
@@ -35,7 +35,8 @@
 | ~~P2~~ | feature4 | geometric-planner-cpu | 编排里的"**初值**"那一档 ③：零依赖关节空间 RRT-Connect（复用 PyRoki 碰撞）出无碰初值 | [feature4](features/feature4_geometric-planner-cpu.md) / [part4-exp](exp/part4-exp.md) | ✅ done（价值重定：碰撞不靠初值，RRT init=收敛~2×加速的可选档）|
 | ~~P2~~ | feature5 | retiming | 编排里的"**输出**"那一档：极简 TOPP 式限速/限加速 retiming（numpy/scipy 自写）；解 feature3 E2 接缝速度尖峰 | [feature5](features/feature5_retiming.md) / [part5-exp](exp/part5-exp.md) | ✅ done（限速解决 9.5→2.2，accel 降 15×）|
 | ~~P3~~ | feature5b | pin-blend | 接缝几何圆角：pin 端点时插一小段斜坡而非硬钉单点，消除尖角残余加速度（feature5 E2 遗留）| [feature5b](features/feature5b_pin-blend.md) / [part5b-exp](exp/part5b-exp.md) | ❌ 假设推翻（accel 真因是参数化方法非端点角，不纳入主干；严格限 accel→TOPP-RA backlog）|
-| ~~P3~~ | feature7b | plan-mainline | 把 plan_batch_v2 + 分阶段 select_backend + 可选 RRT init + retiming 固化进 v0 主干（现散在 exp 脚本）| [feature7b](features/feature7b_plan-mainline.md) / [part7b-exp](exp/part7b-exp.md) | 🚧 进行中 |
+| ~~P3~~ | feature7b | plan-mainline | 把 plan_batch_v2 + 分阶段 select_backend + 可选 RRT init + retiming 固化进 v0 主干（现散在 exp 脚本）| [feature7b](features/feature7b_plan-mainline.md) / [part7b-exp](exp/part7b-exp.md) | ✅ done（`rocrobo.py` MotionGen 串通，回归 R1/R2/R3 全过）|
+| **P2** | feature8 | consumable-api | 把 v0 封装成外部可消费 API：world/robot 入参化 + `solve_ik`/`plan_motion` + serve CLI + 打包（上游 RoboSmith 需求 [up_integration](docs/up_integration.md)）| [feature8](features/feature8_consumable-api.md) / [part8-exp](exp/part8-exp.md) | 🚧 进行中（P1 G1 world入参+`solve_ik` 已在 wbb3 验证；余 G4打包/serve/trajopt world）|
 | P4 | accel-topp | topp-ra | 严格限加速/限 jerk 的时间参数化（TOPP-RA/Ruckig），替换 v0 的简化 retiming（feature5b 定位的 gap）| 待拆解 | backlog（离线装不上，待网络）|
 
 > 流水线视角：`motion_gen` 是总编排，feature4/5 是它编排的两个工位（初值③、输出 retiming），feature3 是流水线本身的调度与质检，feature6 是把质检过的流水线**并行吞吐拉满**。

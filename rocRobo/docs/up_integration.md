@@ -152,7 +152,7 @@ rocRobo 跑在自己的 jax 容器，收 JSON 请求 → 回 JSON，RoboSmith �
 | 无碰 IK seed + 可行性质量 | `solve_ik(pos, quat, *, seed, world) -> (q, ok, quality)` | ✅ |
 | world 贯通轨迹（注入障碍整臂绕开） | `plan(start,goal,world)` / `plan_batch(...,world)` | ✅ |
 | 多路点避障轨迹 | `plan_motion(q_start, waypoints, world) -> PlanResult` | ✅ |
-| 可 import 包 | `from rocrobo import MotionGen, PlanConfig, PlanResult, BatchResult` | ✅ |
+| 可 import 包 | `pip install -e core` 后 `from rocrobo import MotionGen, PlanConfig, PlanResult, BatchResult`（或 `PYTHONPATH=.../core`）| ✅ |
 | 进程边界（warm 运行态 + smoke） | `python -m rocrobo.serve --serve` / `--once`（JSON 行；`op: solve_ik | plan_motion`）| ✅ |
 
 **契约（钉死）**：quat=wxyz；world frame = 米；rocRobo 7 臂 DOF（RoboSmith 9 维含两指，边界补齐）；world 图元
