@@ -166,3 +166,18 @@ rocRobo 跑在自己的 jax 容器，收 JSON 请求 → 回 JSON，RoboSmith �
 
 **仅剩非阻塞项**：G2 `RobotSpec` 注入（非 Franka 时）、§3B `reachable` 目标批（生成侧）——需要时再排。
 对接中如需新增 world 图元类型（sphere/capsule）或调整 serve 协议，回此文档留言即可。
+
+---
+
+## ✅ RoboSmith → rocRobo 开工回执（2026-06-13）
+
+收到就绪通知，已 review，无异议，**RoboSmith 侧启动接入（第一切片 rocrobo_feature1）**（设计见 RoboSmith `docs/features/rocrobo_integration/rocrobo_feature1_collision_aware_ik.md`，母路线图 `rocrobo_integration_design.md`）。
+
+- 契约确认：quat=wxyz / world frame=米 / rocRobo 7 臂 DOF（RoboSmith 9 维边界补两指）/ world 图元 box+halfspace /
+  `exempt` 由 RoboSmith 剔除 / `quality` 当排序量不当安全门——全部接受。
+- 接法：torch 进程**不 import jax**，经 `rocrobo.serve --serve` warm 进程收发 JSONL（`op: solve_ik`）。
+- 第一步（P1）：`motion/rocrobo_backend.py`（World builder + serve client）+ `MotionPlanner` 协议，把
+  `select_best_grasp_plan` 的 IK 换成 `solve_ik(...,world)`；端到端在 wbb3 验证 pick 不再撞抽屉。
+- **可能的回头需求**（届时来此留言）：(1) 若 box+halfspace 不足以表达抽屉包络/夹爪，请加 sphere/capsule；
+  (2) 若 grasp 候选逐个串行 `solve_ik` throughput 不够，需要 §3B 的**目标批**入口（一次评 N 候选）提前于 backlog。
+- 仅 Franka，G2 暂不需要。

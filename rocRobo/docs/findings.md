@@ -9,6 +9,7 @@
 | # | 结论（被实验证实） | 关键证据 | 对后续的影响 | 来源 |
 |---|---|---|---|---|
 | C1 | **JAX-ROCm 在 MI350/gfx950 端到端可用**：PyRoki(含 jaxls 求解器) trajopt 全程 GPU 跑通 | trajopt 输出 `(50,8)` 合法轨迹、无 NaN；`jaxls` 线性代数后端在 ROCm 正常 | rocRobo 主线定为 **JAX 路线（PyRoki 起步）**，不走 PyTorch 重写 | [part1 E2](exp/part1-exp.md) |
+| C1b | **跨代开箱可用：gfx942/MI308X 同样跑通**（非仅 gfx950）：用通用框架镜像 `te-ci rocm-7.2/jax-0.8.0`、无自定义镜像，三 sample 全绿 | hjbog-srdc-20（MI308X/gfx942）：`solve_ik` 0.54mm + world 注入生效、`plan_motion` 1.09mm checks 全 True、`plan` retime 3.169s vel_ok；同套 `AMD_COMGR_NAMESPACE=1`+`PREALLOCATE=false` | AMD enablement 不锁 gfx950；rocRobo 可在任意 gfx942/gfx950 ROCm 节点用现成 jax-rocm 镜像部署（无需 commit 专用镜像）| 2026-06-13 srdc-20 验证 |
 | C2 | **多种子 IK 大幅提升鲁棒性**：单随机 seed 仅 ~52% 成功，N=16 即 100% | 50 个可达目标、1cm 判定：N=1/4/16/64 → 52/92/100/100% | v0 IK 默认 **N=16**；多种子是 rocRobo 第一个自有能力（对标 cuRobo） | [part2 E2](exp/part2-exp.md) |
 | C3 | **GPU 价值只在批量**：小问题 GPU 慢于 CPU，存在 batch 拐点 | 拐点 **B≈64–128**；B=1 GPU 慢 9×，B=512 GPU 3.9ms vs CPU 14.6ms(~3.7×) | rocRobo 必须走 **batched planning**；单次规划用 CPU 反而快 → `plan()` 应按 batch 大小自动选后端 | [part2 E4](exp/part2-exp.md) |
 | C4 | **v0 主干 `plan()` 端到端成立**：多种子IK→直线初值→trajopt→渲染 一次出合法越墙轨迹 | 42s，轨迹合法/限位内；端点 ~6cm（AL 软约束松，待收紧） | v0 motion-gen 骨架可用；端点精度作为已知 next-step | [part2 E3](exp/part2-exp.md) |

@@ -50,6 +50,7 @@
 | 计算底座 | **JAX-ROCm（PyRoki 起步）** | feature1 验证 GPU 全绿（gfx950 跑通 PyRoki trajopt） | 2026-06-11 |
 | 复用镜像 | `rocrobo/pyroki:rocm7.2.4-jax0.8.2`（含 PyRoki+jaxls，已 commit）| 避免重装；future `docker run` 直接用 | 2026-06-11 |
 | 镜像分布 | 已在 **b05-1** 与 **wbb3** 两节点各 commit 一份（节点本地，非共享）| 节点 home/docker 不跨机共享，换节点需重 pull+装或重 commit | 2026-06-11 |
+| 跨代验证 | **gfx942/MI308X 开箱可用**（srdc-20）：直接用通用框架镜像 `te-ci rocm-7.2/jax-0.8.0`，无需自定义镜像，三 sample 全绿（详见 findings C1b）| AMD enablement 不锁 gfx950；新节点用现成 jax-rocm 镜像 `pip install -e pyroki/core` 即可，无需专用镜像 | 2026-06-13 |
 | 必备环境 | `AMD_COMGR_NAMESPACE=1` + docker `--device=/dev/kfd --device=/dev/dri --group-add video` | 否则 JAX GPU init 挂起（AMD known issue）| 2026-06-11 |
 | 远端节点 | 主：b05-1（21:00 后释放）；备：**wbb3**（`gbt350-odcdh5-wbb3.png-odc.dcgpu`，gfx950 / ROCm 7.2.0，64 卡）| b05-1 被占时切 wbb3 | 2026-06-11 |
 

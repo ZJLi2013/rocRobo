@@ -4,10 +4,10 @@
 
 机器人单臂（Franka）场景下，给一个末端位姿/路点 + 实时世界几何，返回**无碰撞**的关节解与可执行轨迹。面向被外部项目（如 RoboSmith 数据生成管线）作为运动后端消费。
 
-▶ demo：`plan()` 一次输出的无碰撞越墙轨迹 → [samples/demo_plan.mp4](samples/demo_plan.mp4)（可运行示例见 [samples/](samples/)）。
+▶ demo：`plan()` 一次输出的无碰撞越墙轨迹 → [samples/demo_plan.mp4](samples/demo_plan.mp4)；collision-blind vs collision-aware 分屏对比 → [samples/demo_marketing.mp4](samples/demo_marketing.mp4)（可运行示例见 [samples/](samples/)）。
 
 **rocRobo 的自有价值**（PyRoki 之上）：
-- **AMD enablement**：JAX-ROCm 上把 PyRoki 可微 FK/IK/碰撞/trajopt 全程 GPU 跑通（gfx950）。
+- **AMD enablement**：JAX-ROCm 上把 PyRoki 可微 FK/IK/碰撞/trajopt 全程 GPU 跑通，**gfx950 与 gfx942/MI308X 均开箱可用**。
 - **多种子 IK**：N 个随机种子并行求解取最优（单种子 ~52% → N=16 100% 成功率）。
 - **批量规划**：`vmap` 批量 trajopt 吃满 GPU 批量红利，按主导阶段自动选 CPU/GPU 后端。
 - **极简编排**：成功判定 + 端点硬钉 + 失败重试 + retiming 的一站式 `plan()`，失败返回 best+reason 不假装成功。
