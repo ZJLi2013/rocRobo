@@ -171,13 +171,15 @@ rocRobo 跑在自己的 jax 容器，收 JSON 请求 → 回 JSON，RoboSmith �
 
 ## ✅ RoboSmith → rocRobo 开工回执（2026-06-13）
 
-收到就绪通知，已 review，无异议，**RoboSmith 侧启动接入（第一切片 rocrobo_feature1）**（设计见 RoboSmith `docs/features/rocrobo_integration/rocrobo_feature1_collision_aware_ik.md`，母路线图 `rocrobo_integration_design.md`）。
+收到就绪通知，已 review，无异议，**RoboSmith 侧启动接入（第一切片 rocrobo_feature1）**（设计见 RoboSmith `docs/features/rocrobo_integration/rocrobo_feature1_drawer_collision_free.md`，母路线图 `rocrobo_integration_design.md`）。
 
 - 契约确认：quat=wxyz / world frame=米 / rocRobo 7 臂 DOF（RoboSmith 9 维边界补两指）/ world 图元 box+halfspace /
   `exempt` 由 RoboSmith 剔除 / `quality` 当排序量不当安全门——全部接受。
-- 接法：torch 进程**不 import jax**，经 `rocrobo.serve --serve` warm 进程收发 JSONL（`op: solve_ik`）。
-- 第一步（P1）：`motion/rocrobo_backend.py`（World builder + serve client）+ `MotionPlanner` 协议，把
-  `select_best_grasp_plan` 的 IK 换成 `solve_ik(...,world)`；端到端在 wbb3 验证 pick 不再撞抽屉。
+- 接法：torch 进程**不 import jax**，经 `rocrobo.serve --serve` warm 进程收发 JSONL（`op: plan_motion` 主用 + `solve_ik` 兜底）。
+- 第一步（feature1）：`motion/rocrobo_backend.py`（World builder + serve client）+ `MotionPlanner` 协议。
+  **范围收窄为"抽屉 runtime collision-free"**：近抽屉段（approach/place/drag）走 `plan_motion` 出整段无碰轨迹
+  替换 executor 直线插值；`solve_ik(...,world)` 端点无碰作兜底。端到端在 wbb3 验证 pick/place 不再撞抽屉。
+- 手写 grasp IK feasibility 的替换（多种子 + collision-aware IK + `quality` 排序）拆到 RoboSmith **feature2**，不在本切片。
 - **可能的回头需求**（届时来此留言）：(1) 若 box+halfspace 不足以表达抽屉包络/夹爪，请加 sphere/capsule；
   (2) 若 grasp 候选逐个串行 `solve_ik` throughput 不够，需要 §3B 的**目标批**入口（一次评 N 候选）提前于 backlog。
 - 仅 Franka，G2 暂不需要。
