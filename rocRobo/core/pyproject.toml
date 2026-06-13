@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "rocrobo"
 version = "0.1.0"
 description = "Collision-aware motion generation on JAX/PyRoki (ROCm)"
-readme = "../readme.md"
 requires-python = ">=3.10"
 # Runtime deps (jax[rocm], pyroki, jaxls, numpy, imageio, matplotlib) are provided
 # by the rocRobo docker image; intentionally NOT pinned here so `pip install -e .`
