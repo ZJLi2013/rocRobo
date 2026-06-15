@@ -115,11 +115,11 @@ class MotionGen:
                     max_acc=round(float(np.abs(a).max()), 3),
                     vel_ok=bool((np.abs(v) <= vmax.max() + 1e-6).all()))
 
-    def _finalize(self, traj, cfg_start, cfg_goal, start_pose, goal_pose, n_retries=0, world=None):
+    def _finalize(self, traj, cfg_start, cfg_goal, start_pose, goal_pose, n_retries=0, world=None, rcoll=None):
         traj = np.array(traj)
         traj[0] = np.asarray(cfg_start)
         traj[-1] = np.asarray(cfg_goal)           # endpoint pin (feature3)
-        success, checks, m = evaluate(traj, start_pose, goal_pose, world=world)
+        success, checks, m = evaluate(traj, start_pose, goal_pose, world=world, rcoll=rcoll)
         reason = None if success else ",".join(k for k, ok in checks.items() if not ok)
         res = PlanResult(success, traj, m, checks, reason, n_retries)
         res.timed = self.retime(traj) if self.cfg.retime else None
@@ -133,13 +133,16 @@ class MotionGen:
                      for (gp, gq) in goals]
         return cfg_start, goal_cfgs
 
-    def solve_ik(self, pos, quat, seed=None, world=None, pos_tol=0.01):
+    def solve_ik(self, pos, quat, seed=None, world=None, pos_tol=0.01, attach=None):
         """Collision-aware IK for a single EE pose (RoboSmith P1 entry; feature8 G1/P1a).
 
         world : list of pyroki collision primitives (default = module scene), injected per call.
         seed  : OPTIONAL warm-start hint only. IK is multi-seed by default (readme C2:
                 single-seed ~52%, N=16 -> 100%), so callers should NOT hand-seed to dodge
                 local minima — the multi-seed backend systematically handles that.
+        attach: OPTIONAL grasped payload as an attached collision object (feature9):
+                {"spheres":[{"center","radius"}], "T_ee_obj":4x4, "exempt_self_links":[...],
+                 "ee_link":"hand"}. When set, IK + quality also avoid the payload.
         Returns (q, ok, quality):
           ok      = position error within pos_tol (absolute reach gate);
           quality = named COMPARABLE scalars for ranking candidates (limit_margin /
@@ -147,9 +150,10 @@ class MotionGen:
                     distances — rank on these instead of re-deriving FK/limit
                     constants. Higher = better; not an absolute safe/unsafe gate.
         """
+        rcoll = v0.attached_collision(**attach) if attach else None
         q, err = v0.multiseed_ik(pos, quat, n=self.cfg.ladder[0],
-                                 near_cfg=seed, pos_tol=pos_tol, world=world)
-        quality = v0.config_quality(q, world=world)
+                                 near_cfg=seed, pos_tol=pos_tol, world=world, rcoll=rcoll)
+        quality = v0.config_quality(q, world=world, rcoll=rcoll)
         quality["pos_err_mm"] = round(float(err * 1000), 3)
         return q, bool(err < pos_tol), quality
 
@@ -172,29 +176,33 @@ class MotionGen:
                 break
         return res
 
-    def plan_motion(self, q_start, waypoints, world=None) -> PlanResult:
+    def plan_motion(self, q_start, waypoints, world=None, attach=None) -> PlanResult:
         """Multi-waypoint motion (RoboSmith P2 entry; feature8 P3).
 
         q_start   : start joint config (DOF vector).
         waypoints : list of EE poses [(pos, quat=wxyz), ...] to pass through in order.
+        attach    : OPTIONAL grasped payload as an attached collision object (feature9;
+                    same dict as solve_ik). When set, IK + trajopt + evaluate make the
+                    payload avoid the world too ("负载 vs 环境" reuses the body detector).
         Collision-aware IK each waypoint (chained near the previous cfg), piecewise
         trajopt with the injected world, concatenate, evaluate(world) + retime.
         Endpoint check is against FK(q_start) and the final waypoint.
         """
+        rcoll = v0.attached_collision(**attach) if attach else None
         q_start = np.asarray(q_start)
         cfgs = [q_start]
         for (p, q) in waypoints:
-            c, _ = v0.multiseed_ik(p, q, n=self.cfg.ladder[0], near_cfg=cfgs[-1], world=world)
+            c, _ = v0.multiseed_ik(p, q, n=self.cfg.ladder[0], near_cfg=cfgs[-1], world=world, rcoll=rcoll)
             cfgs.append(np.asarray(c))
         segs = []
         for a, b in zip(cfgs[:-1], cfgs[1:]):
             seg = np.array(v0._trajopt_solve(a, b, self.cfg.timesteps, self.cfg.dt,
-                                             self.cfg.max_iters, world=world))
+                                             self.cfg.max_iters, world=world, rcoll=rcoll))
             seg[0], seg[-1] = a, b
             segs.append(seg)
         traj = np.concatenate([segs[0]] + [s[1:] for s in segs[1:]], axis=0)
         start_pose = ee_pose(q_start)
-        res = self._finalize(traj, cfgs[0], cfgs[-1], start_pose, waypoints[-1], 0, world=world)
+        res = self._finalize(traj, cfgs[0], cfgs[-1], start_pose, waypoints[-1], 0, world=world, rcoll=rcoll)
         return res
 
     def plan_batch(self, goals, start_pose=None, route=None, cfgs=None, world=None) -> BatchResult:

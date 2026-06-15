@@ -37,6 +37,7 @@
 | ~~P3~~ | feature5b | pin-blend | 接缝几何圆角：pin 端点时插一小段斜坡而非硬钉单点，消除尖角残余加速度（feature5 E2 遗留）| [feature5b](features/feature5b_pin-blend.md) / [part5b-exp](exp/part5b-exp.md) | ❌ 假设推翻（accel 真因是参数化方法非端点角，不纳入主干；严格限 accel→TOPP-RA backlog）|
 | ~~P3~~ | feature7b | plan-mainline | 把 plan_batch_v2 + 分阶段 select_backend + 可选 RRT init + retiming 固化进 v0 主干（现散在 exp 脚本）| [feature7b](features/feature7b_plan-mainline.md) / [part7b-exp](exp/part7b-exp.md) | ✅ done（`rocrobo.py` MotionGen 串通，回归 R1/R2/R3 全过）|
 | **P2** | feature8 | consumable-api | 把 v0 封装成外部可消费 API：world/robot 入参化 + `solve_ik`/`plan_motion` + serve CLI + 打包（上游 RoboSmith 需求 [up_integration](docs/up_integration.md)）| [feature8](features/feature8_consumable-api.md) / [part8-exp](exp/part8-exp.md) | 🚧 进行中（P1 G1 world入参+`solve_ik` 已在 wbb3 验证；余 G4打包/serve/trajopt world）|
+| **P1** | feature9 | attached-collision-object | 抓取负载作刚性附着球（ACO）并入碰撞模型，随 EE FK 平移、复用 world+self 检测；解上游 [up_integration §P1](docs/up_integration.md)「手臂无碰、负载怼障」（阻塞 RoboSmith feature1 收尾）| [feature9](features/feature9_attached-collision-object.md) / [part9-exp](exp/part9-exp.md) | ✅ done（wbb3 E1–E5 全过：本体+0.070m / 负载−0.040m 同检测，无回归）|
 | P4 | accel-topp | topp-ra | 严格限加速/限 jerk 的时间参数化（TOPP-RA/Ruckig），替换 v0 的简化 retiming（feature5b 定位的 gap）| 待拆解 | backlog（离线装不上，待网络）|
 
 > 流水线视角：`motion_gen` 是总编排，feature4/5 是它编排的两个工位（初值③、输出 retiming），feature3 是流水线本身的调度与质检，feature6 是把质检过的流水线**并行吞吐拉满**。

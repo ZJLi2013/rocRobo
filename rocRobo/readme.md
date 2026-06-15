@@ -22,14 +22,16 @@ mg = MotionGen()                 # 一次构建，复用 JIT 编译
 
 | 入口 | 签名 | 返回 |
 |---|---|---|
-| 碰撞感知 IK seed | `mg.solve_ik(pos, quat, *, seed=None, world=None)` | `(q, ok, quality)` |
+| 碰撞感知 IK seed | `mg.solve_ik(pos, quat, *, seed=None, world=None, attach=None)` | `(q, ok, quality)` |
 | 单目标规划 | `mg.plan(start_pose, goal_pose, world=None)` | `PlanResult` |
-| 多路点避障运动 | `mg.plan_motion(q_start, waypoints, world=None)` | `PlanResult` |
+| 多路点避障运动 | `mg.plan_motion(q_start, waypoints, world=None, attach=None)` | `PlanResult` |
 | 批量规划 | `mg.plan_batch(goals, *, world=None, route=None)` | `BatchResult` |
 
 - `PlanResult(success, traj, metrics, checks, reason, n_retries)`；`res.timed` = retiming 后可执行轨迹。
 - `quality = {limit_margin, world_clear, self_clear, pos_err_mm}`：与内部 evaluate **同源**，是给候选**排序用的可比标量**（非绝对安全门）。
 - `world` = pyroki 碰撞图元列表（`Box` / `HalfSpace`），**每次调用可变**，贯通 IK + trajopt + evaluate。
+- `attach`（feature9，可选）= 抓取负载作**刚性附着球（ACO）**：`{spheres, T_ee_obj, exempt_self_links, ee_link}`。
+  随末端 FK 平移，并入 world + self 碰撞（与本体复用同一检测）；豁免持物夹爪连杆的自碰。缺省 = 仅本体。
 
 **契约 / 约定（消费方必读）**：
 - `quat = wxyz`（pyroki/jaxlie 约定）。

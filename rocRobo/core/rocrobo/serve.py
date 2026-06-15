@@ -17,6 +17,9 @@ Request:  {"op":"solve_ik","pos":[x,y,z],"quat":[w,x,y,z],"seed":[...]|null,"wor
 World:    list of {"type":"box","center":[cx,cy,cz],"extent":[ex,ey,ez]}
                   {"type":"halfspace","point":[px,py,pz],"normal":[nx,ny,nz]}
           (omitted / null -> module default scene)
+Attach:   OPTIONAL grasped payload as an attached collision object (feature9):
+          {"ee_link":"hand","T_ee_obj":[[..4x4..]],"spheres":[{"center","radius"}],
+           "exempt_self_links":["panda_leftfinger",...]}  (null -> body only)
 Response: {"ok":bool,"q":[...],"quality":{...},"sec":float}  or  {"error":"..."}
 
 Contract (see up_integration.md §E): quat=wxyz, world frame = metres, 7 arm DOF.
@@ -49,21 +52,37 @@ def build_world(spec):
     return prims
 
 
+def build_attach(spec):
+    """JSON attach spec -> attach dict for MotionGen (None = no payload; feature9).
+
+    {"ee_link":"hand","T_ee_obj":[[..4x4..]],"spheres":[{"center","radius"}],
+     "exempt_self_links":["panda_leftfinger",...]}  (all but spheres optional).
+    """
+    if not spec:
+        return None
+    return {"spheres": spec["spheres"],
+            "T_ee_obj": spec.get("T_ee_obj", np.eye(4).tolist()),
+            "exempt_self_links": tuple(spec.get("exempt_self_links", ())),
+            "ee_link": spec.get("ee_link", "hand")}
+
+
 def handle(mg, req):
     op = req.get("op", "solve_ik")
     t0 = time.time()
     if op == "solve_ik":
         world = build_world(req.get("world"))
+        attach = build_attach(req.get("attach"))
         seed = np.array(req["seed"], float) if req.get("seed") is not None else None
         q, ok, quality = mg.solve_ik(np.array(req["pos"], float), np.array(req["quat"], float),
-                                     seed=seed, world=world)
+                                     seed=seed, world=world, attach=attach)
         return {"ok": bool(ok), "q": np.asarray(q).tolist(),
                 "quality": quality, "sec": round(time.time() - t0, 2)}
     if op == "plan_motion":
         world = build_world(req.get("world"))
+        attach = build_attach(req.get("attach"))
         waypoints = [(np.array(w["pos"], float), np.array(w["quat"], float))
                      for w in req["waypoints"]]
-        res = mg.plan_motion(np.array(req["q_start"], float), waypoints, world=world)
+        res = mg.plan_motion(np.array(req["q_start"], float), waypoints, world=world, attach=attach)
         return {"ok": bool(res.success), "reason": res.reason, "metrics": res.metrics,
                 "traj": np.asarray(res.traj).tolist(),
                 "timed": (None if res.timed is None

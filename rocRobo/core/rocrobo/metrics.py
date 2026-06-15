@@ -35,9 +35,12 @@ def ee_pose(cfg):
     return fk[4:7], fk[:4]
 
 
-def evaluate(traj, start_pose, goal_pose, world=None):
+def evaluate(traj, start_pose, goal_pose, world=None, rcoll=None):
     """world=None -> default scene (wall/ground checks, unchanged). When an injected
-    world is given, gate on the min clearance over ALL its primitives (feature8 P3)."""
+    world is given, gate on the min clearance over ALL its primitives (feature8 P3).
+    rcoll=None -> module body model; pass an attached_collision() so the self/world
+    clearance gates cover the grasped payload too (feature9)."""
+    rcoll = robot_coll if rcoll is None else rcoll
     traj_j = jnp.array(traj)
     (sp, sq), (gp, gq) = start_pose, goal_pose
     p0, q0 = ee_pose(traj[0])
@@ -47,13 +50,13 @@ def evaluate(traj, start_pose, goal_pose, world=None):
     start_rot_deg = quat_angle_deg(q0, sq)
     end_rot_deg = quat_angle_deg(qT, gq)
 
-    self_d = np.array(robot_coll.compute_self_collision_distance(robot, traj_j))
+    self_d = np.array(rcoll.compute_self_collision_distance(robot, traj_j))
     self_min = float(self_d.min())
     self_min_start = float(self_d[0].min())
 
     # compute_world_collision_distance asserts on batched cfg -> vmap per timestep
     def _world(geom):
-        d = jax.vmap(lambda c: robot_coll.compute_world_collision_distance(robot, c, geom))(traj_j)
+        d = jax.vmap(lambda c: rcoll.compute_world_collision_distance(robot, c, geom))(traj_j)
         return float(np.array(d).min())
 
     within = bool((traj >= lo - 1e-3).all() and (traj <= hi + 1e-3).all())
