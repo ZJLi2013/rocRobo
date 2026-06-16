@@ -24,6 +24,15 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import imageio.v2 as imageio
 
 urdf = load_robot_description("panda_description")
+# Contract (readme / up_integration): rocRobo plans the 7 ARM DOF only; the gripper is
+# commanded by the consumer. The stock panda URDF actuates panda_finger_joint1 (+ joint2
+# mimic), making num_actuated_joints=8 and breaking the 7-DOF q_start contract (a 7-vs-8
+# broadcast in multiseed_ik). Weld the fingers to `fixed` at load so IK/trajopt operate
+# on exactly the 7 arm joints end-to-end (dof/lo/hi/seeds/FK all collapse to 7).
+for _j in urdf.joint_map.values():
+    if "finger" in _j.name:
+        _j.type = "fixed"
+        _j.mimic = None
 robot = pk.Robot.from_urdf(urdf)
 target_link = "panda_hand"
 link_idx = robot.links.names.index(target_link)
