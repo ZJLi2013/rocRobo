@@ -33,6 +33,7 @@ for _j in urdf.joint_map.values():
     if "finger" in _j.name:
         _j.type = "fixed"
         _j.mimic = None
+urdf._update_actuated_joints()   # recompute yourdfpy's cached actuated set (pyroki reads it)
 robot = pk.Robot.from_urdf(urdf)
 target_link = "panda_hand"
 link_idx = robot.links.names.index(target_link)
