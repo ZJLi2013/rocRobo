@@ -4,6 +4,25 @@
 
 > 定位与 Isaac Sim 全量拆解见 [`docs/isaacsim_study.md`](docs/isaacsim_study.md)。
 
+## Dependencies
+
+| Component | Path |
+|:---|:---|
+| PyRoki | [`pyroki/`](pyroki/) — `git submodule` ([upstream](https://github.com/chungmin99/pyroki)) |
+| rocRobo | [`rocRobo/core/`](rocRobo/core/) — Python package `rocrobo` |
+
+```bash
+git submodule update --init --recursive
+```
+
+在已有 JAX-ROCm 环境（或 §0 镜像 + 挂载本仓库）下，可编辑安装：
+
+```bash
+pip install -e pyroki
+pip install -e rocRobo/core
+export ROCROBO_ASSETS="$PWD/pyroki/examples/assets"
+```
+
 ## 主线条
 
 ```

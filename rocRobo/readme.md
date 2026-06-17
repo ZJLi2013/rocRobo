@@ -41,26 +41,56 @@ mg = MotionGen()                 # 一次构建，复用 JIT 编译
 
 ## Quick start
 
-### 1. 起容器（复用镜像，单条命令）
+### 0. Docker 镜像 `rocrobo/pyroki`
+
+[Dependencies](../README.md#dependencies) · `docker/rocrobo-pyroki/Dockerfile`
+
+```bash
+docker build -f docker/rocrobo-pyroki/Dockerfile -t rocrobo/pyroki:rocm7.2.4-jax0.8.2 .
+```
 
 ```bash
 docker run -d --name rocrobo_dev \
   --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host \
-  -e AMD_COMGR_NAMESPACE=1 \
-  -v /home/<you>/rocrobo:/work \
+  -e AMD_COMGR_NAMESPACE=1 -e HIP_VISIBLE_DEVICES=0 \
+  -v "$PWD:/rocrobsim" \
+  rocrobo/pyroki:rocm7.2.4-jax0.8.2 sleep infinity
+
+docker exec rocrobo_dev pip install -e /rocrobsim/pyroki --no-deps
+```
+
+```bash
+docker run --rm \
+  --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host \
+  -e AMD_COMGR_NAMESPACE=1 -e HIP_VISIBLE_DEVICES=0 \
+  rocrobo/pyroki:rocm7.2.4-jax0.8.2 \
+  python -u -c "import jax, jax.numpy as jnp; print(jax.devices()); x=jnp.ones((2048,2048)); print(float((x@x).sum()))"
+```
+
+期望：`RocmDevice`，matmul 和 **8589934592**。gfx950 / MI350X 须 `AMD_COMGR_NAMESPACE=1`（[ROCm/jax#800](https://github.com/ROCm/jax/issues/800)）。
+
+### 1. 起容器（复用镜像，单条命令）
+
+把 **整个 RocRobSim 仓库**（含 `pyroki/` submodule 与 `rocRobo/core/`）挂进容器，路径固定为 `/rocrobsim`：
+
+```bash
+docker run -d --name rocrobo_dev \
+  --device=/dev/kfd --device=/dev/dri --group-add video --ipc=host \
+  -e AMD_COMGR_NAMESPACE=1 -e HIP_VISIBLE_DEVICES=0 \
+  -v /path/to/RocRobSim:/rocrobsim \
   rocrobo/pyroki:rocm7.2.4-jax0.8.2 sleep infinity
 ```
 
-> `AMD_COMGR_NAMESPACE=1` 必须，否则 JAX GPU init 静默挂起（AMD known issue）；pyroki 为 `-e` 安装指向 `/work/pyroki`，故必须挂 `-v .../rocrobo:/work`。
+> `AMD_COMGR_NAMESPACE=1` 建议（gfx950 / MI350X 上否则 JAX GPU 初始化可能长时间挂起，见 [ROCm/jax#800](https://github.com/ROCm/jax/issues/800)）。镜像内已 `pip install -e /opt/pyroki`；要改源码时用 §0 的 `pip install -e /rocrobsim/pyroki --no-deps` 覆盖为可编辑挂载版。
 
 ### 2. import 用法（同进程）
 
-`rocrobo` 包在 `core/` 下（src-layout，包名即 `rocrobo`）。装一次即可 `import rocrobo`：
+`rocrobo` 包在 `rocRobo/core/` 下（src-layout，包名即 `rocrobo`）。装一次即可 `import rocrobo`：
 
 ```bash
-pip install -e core                          # 之后处处可 import rocrobo（推荐）
-# 或免安装：export PYTHONPATH=/work/core
-export ROCROBO_ASSETS=/work/pyroki/examples/assets
+pip install -e /rocrobsim/rocRobo/core       # 之后处处可 import rocrobo（推荐）
+# 或免安装：export PYTHONPATH=/rocrobsim/rocRobo/core
+export ROCROBO_ASSETS=/rocrobsim/pyroki/examples/assets
 export XLA_PYTHON_CLIENT_PREALLOCATE=false   # 共享节点防 OOM
 ```
 
