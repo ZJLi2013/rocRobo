@@ -31,7 +31,7 @@ import jax
 import jax.numpy as jnp
 
 from . import pipeline as v0
-from .metrics import evaluate, ee_pose, PlanResult
+from .metrics import evaluate, ee_pose, PlanResult, POS_TOL_MM
 from . import rrt
 from .retiming import get_vmax, seg_durations_vel, accel_limit, resample, vel_acc
 from .pipeline import batched_trajopt
@@ -187,22 +187,31 @@ class MotionGen:
         Collision-aware IK each waypoint (chained near the previous cfg), piecewise
         trajopt with the injected world, concatenate, evaluate(world) + retime.
         Endpoint check is against FK(q_start) and the final waypoint.
+
+        IK uses the same retry ladder as `plan` (16 -> 64 seeds): on a failed
+        evaluate (e.g. endpoint miss from a too-thin seed set), re-solve every
+        waypoint at the next seed count before falling back to the best result.
         """
         rcoll = v0.attached_collision(**attach) if attach else None
         q_start = np.asarray(q_start)
-        cfgs = [q_start]
-        for (p, q) in waypoints:
-            c, _ = v0.multiseed_ik(p, q, n=self.cfg.ladder[0], near_cfg=cfgs[-1], world=world, rcoll=rcoll)
-            cfgs.append(np.asarray(c))
-        segs = []
-        for a, b in zip(cfgs[:-1], cfgs[1:]):
-            seg = np.array(v0._trajopt_solve(a, b, self.cfg.timesteps, self.cfg.dt,
-                                             self.cfg.max_iters, world=world, rcoll=rcoll))
-            seg[0], seg[-1] = a, b
-            segs.append(seg)
-        traj = np.concatenate([segs[0]] + [s[1:] for s in segs[1:]], axis=0)
         start_pose = ee_pose(q_start)
-        res = self._finalize(traj, cfgs[0], cfgs[-1], start_pose, waypoints[-1], 0, world=world, rcoll=rcoll)
+        res = None
+        for i, N in enumerate(self.cfg.ladder):
+            cfgs = [q_start]
+            for (p, q) in waypoints:
+                c, _ = v0.multiseed_ik(p, q, n=N, near_cfg=cfgs[-1], world=world, rcoll=rcoll)
+                cfgs.append(np.asarray(c))
+            segs = []
+            for a, b in zip(cfgs[:-1], cfgs[1:]):
+                seg = np.array(v0._trajopt_solve(a, b, self.cfg.timesteps, self.cfg.dt,
+                                                 self.cfg.max_iters, world=world, rcoll=rcoll))
+                seg[0], seg[-1] = a, b
+                segs.append(seg)
+            traj = np.concatenate([segs[0]] + [s[1:] for s in segs[1:]], axis=0)
+            res = self._finalize(traj, cfgs[0], cfgs[-1], start_pose, waypoints[-1], i,
+                                 world=world, rcoll=rcoll)
+            if res.success:
+                break
         return res
 
     def plan_batch(self, goals, start_pose=None, route=None, cfgs=None, world=None) -> BatchResult:
