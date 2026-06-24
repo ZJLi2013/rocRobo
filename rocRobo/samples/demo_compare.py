@@ -1,6 +1,6 @@
-"""Marketing demo: collision-blind vs rocRobo collision-aware, side-by-side.
+"""Comparison demo: collision-blind vs rocRobo collision-aware, side-by-side.
 
-    python samples/demo_marketing.py [out.mp4]
+    python samples/demo_compare.py [out.mp4]
 
 Same start/goal, same wall. LEFT = trajopt with the wall ignored (collision-blind)
 -> the arm plows straight through. RIGHT = rocRobo's collision-aware plan -> the
@@ -56,7 +56,7 @@ def _panel(ax, chain_t, ee_trail, azim, title, color, collided):
     ax.set_title(ttl, color="white", fontsize=12, pad=2)
 
 
-def main(out="demo_marketing.mp4"):
+def main(out="demo_compare.mp4"):
     (sp, sq), (gp, gq) = rp.start_pose, rp.goal_pose
     cfg_start, _ = rp.multiseed_ik(sp, sq)
     cfg_goal, _ = rp.multiseed_ik(gp, gq, near_cfg=cfg_start)
@@ -96,4 +96,4 @@ def main(out="demo_marketing.mp4"):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "demo_marketing.mp4")
+    main(sys.argv[1] if len(sys.argv) > 1 else "demo_compare.mp4")
