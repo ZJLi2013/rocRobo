@@ -2,7 +2,7 @@
 
 *中文 ｜ [English](readme-en.md)*
 
-> **AMD GPU（ROCm）上的 collision-aware 运动生成**——碰撞感知 IK + 避障轨迹优化，构建于 JAX + [PyRoki](https://github.com/chungmin99/pyroki)，NV-free 的开源 cuRobo 等价 v0。
+> **跑在 AMD GPU（ROCm）上的机械臂运动规划库**——输入目标位姿和场景里的障碍物，输出一条不会撞到东西的关节轨迹。基于 JAX + [PyRoki](https://github.com/chungmin99/pyroki)，无需 NVIDIA GPU。
 
 给末端位姿/路点 + 实时世界几何，返回**无碰撞**的关节解与可执行轨迹。面向被外部项目（如 RoboSmith 数据生成管线）作为运动后端消费。单臂（Franka）已验证 gfx950（MI350X）与 gfx942（MI300 系，含 MI308X）。
 
