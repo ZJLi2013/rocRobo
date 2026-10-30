@@ -124,7 +124,8 @@ def _multiseed_solve(target_p, target_q, seeds, world, rcoll):
 _multiseed_jit = jax.jit(_multiseed_solve)
 
 
-def multiseed_ik(target_p, target_q, n=N_SEEDS, near_cfg=None, pos_tol=0.01, world=None, rcoll=None):
+def multiseed_ik(target_p, target_q, n=N_SEEDS, near_cfg=None, pos_tol=0.01, world=None, rcoll=None,
+                 seed_cfg=None):
     """Solve IK from n random seeds; pick best.
 
     world: list of pyroki collision primitives (default = module scene world_coll).
@@ -133,10 +134,14 @@ def multiseed_ik(target_p, target_q, n=N_SEEDS, near_cfg=None, pos_tol=0.01, wor
     If near_cfg is given, among seeds meeting pos_tol pick the one closest in
     joint space to near_cfg (keeps start/goal in the same IK branch). Otherwise
     pick the minimum position-error seed.
+    seed_cfg: a caller's IK solution for this pose, placed as seed row 0 (same n, so the compiled kernel is reused).
     """
     world = world_coll if world is None else world
     rcoll = robot_coll if rcoll is None else rcoll
-    seeds = jnp.array(lo + (hi - lo) * rng.uniform(size=(n, dof)))
+    seeds = lo + (hi - lo) * rng.uniform(size=(n, dof))
+    if seed_cfg is not None:
+        seeds[0] = np.clip(np.asarray(seed_cfg, dtype=float)[:dof], lo, hi)
+    seeds = jnp.array(seeds)
     sols = np.array(_multiseed_jit(jnp.array(target_p), jnp.array(target_q), seeds, world, rcoll))
     fk = np.array(jax.vmap(robot.forward_kinematics)(jnp.array(sols)))
     err = np.linalg.norm(fk[:, link_idx, 4:7] - target_p, axis=-1)

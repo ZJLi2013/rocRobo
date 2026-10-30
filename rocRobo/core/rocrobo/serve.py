@@ -82,7 +82,8 @@ def handle(mg, req):
         attach = build_attach(req.get("attach"))
         waypoints = [(np.array(w["pos"], float), np.array(w["quat"], float))
                      for w in req["waypoints"]]
-        res = mg.plan_motion(np.array(req["q_start"], float), waypoints, world=world, attach=attach)
+        res = mg.plan_motion(np.array(req["q_start"], float), waypoints, world=world, attach=attach,
+                             goal_seeds=req.get("goal_seeds"))
         return {"ok": bool(res.success), "reason": res.reason, "metrics": res.metrics,
                 "traj": np.asarray(res.traj).tolist(),
                 "timed": (None if res.timed is None

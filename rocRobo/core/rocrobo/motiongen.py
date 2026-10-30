@@ -176,7 +176,7 @@ class MotionGen:
                 break
         return res
 
-    def plan_motion(self, q_start, waypoints, world=None, attach=None) -> PlanResult:
+    def plan_motion(self, q_start, waypoints, world=None, attach=None, goal_seeds=None) -> PlanResult:
         """Multi-waypoint motion (RoboSmith P2 entry; feature8 P3).
 
         q_start   : start joint config (DOF vector).
@@ -191,15 +191,17 @@ class MotionGen:
         IK uses the same retry ladder as `plan` (16 -> 64 seeds): on a failed
         evaluate (e.g. endpoint miss from a too-thin seed set), re-solve every
         waypoint at the next seed count before falling back to the best result.
+        goal_seeds: OPTIONAL per-waypoint IK solutions from the caller, each placed in that waypoint's seed set.
         """
         rcoll = v0.attached_collision(**attach) if attach else None
         q_start = np.asarray(q_start)
         start_pose = ee_pose(q_start)
+        seeds = list(goal_seeds) if goal_seeds else [None] * len(waypoints)
         res = None
         for i, N in enumerate(self.cfg.ladder):
             cfgs = [q_start]
-            for (p, q) in waypoints:
-                c, _ = v0.multiseed_ik(p, q, n=N, near_cfg=cfgs[-1], world=world, rcoll=rcoll)
+            for (p, q), s in zip(waypoints, seeds):
+                c, _ = v0.multiseed_ik(p, q, n=N, near_cfg=cfgs[-1], world=world, rcoll=rcoll, seed_cfg=s)
                 cfgs.append(np.asarray(c))
             segs = []
             for a, b in zip(cfgs[:-1], cfgs[1:]):
